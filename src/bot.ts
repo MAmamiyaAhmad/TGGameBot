@@ -32,7 +32,6 @@ bot.use(session<SessionData, BotContext>({
   initial: (): SessionData => ({ step: undefined, activeMenu: "main", role: "user" })
 }));
 
-// /start command: proses referral, notifikasi, dan penentuan role
 bot.command("start", async (ctx) => {
   const userId = ctx.from!.id;
   const messageText = ctx.message?.text || "";
@@ -42,22 +41,18 @@ bot.command("start", async (ctx) => {
   const existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
   if (!existingUser) {
     db.prepare("INSERT INTO users (id, referred_by) VALUES (?, ?)").run(userId, referrerId || null);
-    
     if (referrerId && referrerId !== userId.toString()) {
       db.prepare("INSERT INTO referrals (referrer_id, referred_id, earned) VALUES (?, ?, ?)").run(referrerId, userId, 500);
       db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?").run(500, referrerId);
-      
       try {
         await ctx.api.sendMessage(Number(referrerId), `📣 Ada referral baru! User ${userId} telah bergabung melalui referral link Anda. Bonus 500 SundX telah ditambahkan ke saldo Anda.`);
       } catch (error) {
         console.error("Gagal mengirim notifikasi ke upline:", error);
       }
-      
       await ctx.reply("✅ Terima kasih telah menggunakan referral link! Upline Anda telah mendapatkan bonus referral.");
     }
   }
   
-  // Tentukan role berdasarkan ADMIN_ID dan SUPER_ADMIN_ID
   const isAdmin = ctx.from!.id.toString() === process.env.ADMIN_ID || ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID;
   ctx.session.role = isAdmin ? (ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID ? "superadmin" : "admin") : "user";
   
@@ -65,11 +60,10 @@ bot.command("start", async (ctx) => {
   await ctx.reply("Welcome to SundaraX Faucet Bot!", { reply_markup: getMainMenu(isAdmin) });
 });
 
-// Update last_seen setiap pesan
 bot.on("message:text", async (ctx) => {
   db.prepare("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?").run(ctx.from!.id);
   
-  // Jika admin sedang memasukkan input (misalnya ban, add balance, dll)
+  // Jika admin sedang memasukkan input untuk admin actions
   if ((ctx.session.role === "admin" || ctx.session.role === "superadmin") && ctx.session.step && ctx.session.step.startsWith("awaiting_")) {
     await handleAdminInput(ctx);
     return;
@@ -100,13 +94,11 @@ bot.on("message:text", async (ctx) => {
   await handleMainMenuSelection(ctx);
 });
 
-// Callback untuk inline keyboard (deposit, withdraw, support, admin)
 bot.on("callback_query:data", async (ctx) => {
   await handleInlineCallback(ctx);
   await ctx.answerCallbackQuery();
 });
 
-// /admin command: langsung masuk ke admin panel
 bot.command("admin", async (ctx) => {
   if (ctx.from!.id.toString() === process.env.ADMIN_ID || ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID) {
     ctx.session.activeMenu = "admin";

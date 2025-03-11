@@ -17,10 +17,19 @@ export async function unbanUser(ctx: BotContext, userId: number) {
 
 // Fungsi untuk menambahkan balance
 export async function addBalance(ctx: BotContext, userId: number, amount: number) {
+  if (amount <= 0) {
+    await ctx.reply("Masukkan jumlah positif untuk menambahkan saldo.");
+    return;
+  }
   const user = db.prepare("SELECT balance FROM users WHERE id = ?").get(userId) as { balance: number } | undefined;
   if (user && typeof user.balance === "number") {
     db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?").run(amount, userId);
     await ctx.reply(`Balance ${amount} SundX telah ditambahkan untuk user ID ${userId}.`, { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") });
+    try {
+      await ctx.api.sendMessage(userId, `Saldo Anda telah bertambah sebesar ${amount} SundX.`);
+    } catch (e) {
+      console.error("Gagal mengirim notifikasi ke user:", e);
+    }
   } else {
     await ctx.reply(`User dengan ID ${userId} tidak ditemukan.`, { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") });
   }
@@ -28,11 +37,20 @@ export async function addBalance(ctx: BotContext, userId: number, amount: number
 
 // Fungsi untuk mengurangi balance
 export async function reduceBalance(ctx: BotContext, userId: number, amount: number) {
+  if (amount <= 0) {
+    await ctx.reply("Masukkan jumlah positif untuk mengurangi saldo.");
+    return;
+  }
   const user = db.prepare("SELECT balance FROM users WHERE id = ?").get(userId) as { balance: number } | undefined;
   if (user && typeof user.balance === "number") {
     if (user.balance >= amount) {
       db.prepare("UPDATE users SET balance = balance - ? WHERE id = ?").run(amount, userId);
       await ctx.reply(`Balance ${amount} SundX telah dikurangi dari user ID ${userId}.`, { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") });
+      try {
+        await ctx.api.sendMessage(userId, `Saldo Anda telah berkurang sebesar ${amount} SundX.`);
+      } catch (e) {
+        console.error("Gagal mengirim notifikasi ke user:", e);
+      }
     } else {
       await ctx.reply(`User ID ${userId} tidak memiliki saldo cukup untuk mengurangi ${amount} SundX.`, { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") });
     }
@@ -57,18 +75,10 @@ export async function handleAdminInput(ctx: BotContext) {
       await unbanUser(ctx, userId);
       break;
     case "awaiting_add_balance":
-      if (amount) {
-        await addBalance(ctx, userId, amount);
-      } else {
-        await ctx.reply("Masukkan jumlah yang valid.");
-      }
+      await addBalance(ctx, userId, amount);
       break;
     case "awaiting_reduce_balance":
-      if (amount) {
-        await reduceBalance(ctx, userId, amount);
-      } else {
-        await ctx.reply("Masukkan jumlah yang valid.");
-      }
+      await reduceBalance(ctx, userId, amount);
       break;
     default:
       break;

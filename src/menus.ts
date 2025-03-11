@@ -109,7 +109,7 @@ export const extraMenu = new Keyboard()
   .text("🔙 Back");
 
 // ----- ADMIN PANEL MENU -----
-// Admin panel dideklarasikan hanya di sini.
+// adminMenu dideklarasikan hanya di sini
 export const adminMenu = new Keyboard()
   .text("👥 Manage Users")
   .text("💰 Transaction Logs")
@@ -288,6 +288,28 @@ export async function handleInlineCallback(ctx: BotContext) {
     return;
   }
   
+  // Admin actions
+  if (data === "BAN_USER") {
+    ctx.session.step = "awaiting_ban_user_id";
+    await ctx.reply("Masukkan ID User yang ingin dibanned:");
+    return;
+  }
+  if (data === "UNBAN_USER") {
+    ctx.session.step = "awaiting_unban_user_id";
+    await ctx.reply("Masukkan ID User yang ingin diunban:");
+    return;
+  }
+  if (data === "ADD_BALANCE") {
+    ctx.session.step = "awaiting_add_balance";
+    await ctx.reply("Masukkan ID User dan jumlah untuk menambahkan saldo (contoh: 12345 100):");
+    return;
+  }
+  if (data === "REDUCE_BALANCE") {
+    ctx.session.step = "awaiting_reduce_balance";
+    await ctx.reply("Masukkan ID User dan jumlah untuk mengurangi saldo (contoh: 12345 50):");
+    return;
+  }
+  
   if (ctx.session.step === "awaiting_deposit_currency") {
     await handleDeposit(ctx, data);
     ctx.session.step = undefined;
@@ -306,5 +328,4 @@ export async function handleInlineCallback(ctx: BotContext) {
 }
 
 // ----- EXPORT ADMIN ACTIONS -----
-// Hanya mengekspor fungsi–fungsi admin dari adminActions.ts
 export { handleAdminInput, handleAdminMenuSelection, getManageUsersInlineKeyboard };
