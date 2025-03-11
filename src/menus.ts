@@ -293,6 +293,21 @@ export async function handleInlineCallback(ctx: BotContext) {
     await ctx.reply("Masukkan username atau user ID untuk mencari:");
     return;
   }
+  if (data === "ADD_ADMIN") {
+    ctx.session.step = "awaiting_add_admin";
+    await ctx.reply("Masukkan ID User yang akan dijadikan admin:");
+    return;
+  }
+  if (data === "REMOVE_ADMIN") {
+    ctx.session.step = "awaiting_remove_admin";
+    await ctx.reply("Masukkan ID User yang status admin-nya akan dicabut:");
+    return;
+  }
+  if (data === "SEARCH_USER") {
+    ctx.session.step = "awaiting_search_user";
+    await ctx.reply("Masukkan username atau user ID untuk mencari:");
+    return;
+  }  
   
   if (ctx.session.step === "awaiting_deposit_currency") {
     await handleDeposit(ctx, data);

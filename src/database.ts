@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
     username TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_banned INTEGER DEFAULT 0
+    is_banned INTEGER DEFAULT 0,
+    is_admin INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS transactions (
