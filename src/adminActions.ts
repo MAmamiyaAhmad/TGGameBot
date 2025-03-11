@@ -146,15 +146,20 @@ export async function handleSearchUser(ctx: BotContext, query: string) {
   const username = user.username ? `@${user.username}` : "Tidak tersedia";
   
   const message = `
-👤 <b>User Information</b>
-<b>Nama:</b> ${fullName}
-<b>Username:</b> ${username}
-<b>User ID:</b> <code>${user.id}</code>
-<b>Balance:</b> ${user.balance} SundX
-<b>Status:</b> ${status}
-<b>Registered:</b> ${user.created_at}
-<b>Downline:</b> ${downline.count}
-  `;
+<b>User Information</b>
+•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+
+🆔 <b>Name:</b> ${fullName}
+ ├ <b>🧑‍💻 Username:</b> @${username}
+ ├ <b>🆔 User ID:</b> <code>${user.id}</code>
+ ├ <b>💰 Balance:</b> ${user.balance} SundX
+ ├ <b>🔑 Status:</b> ${status}
+ ├ <b>🗓 Registered:</b> ${user.created_at}
+ └ <b>👥 Downline:</b> ${downline.count}
+
+•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+`;
+
   
   await ctx.reply(message, { parse_mode: "HTML" });
 }
@@ -197,29 +202,58 @@ export async function handleAdminInput(ctx: BotContext) {
 
 // Handler untuk admin menu selection
 export async function handleAdminMenuSelection(ctx: BotContext) {
-  const text = ctx.message?.text;
-  if (!text) return;
-  switch (text) {
-    case "👥 Manage Users":
-      await ctx.reply("Pilih tindakan:", { reply_markup: getManageUsersInlineKeyboard() });
-      break;
-    case "💰 Transaction Logs":
-      await ctx.reply("Transaction Logs feature is under development.", { reply_markup: getMainMenu(true) });
-      break;
-    case "🔙 Back":
-      ctx.session.activeMenu = "main";
-      await ctx.reply("Kembali ke main menu:", { reply_markup: getMainMenu(true) });
-      break;
-    default:
-      await ctx.reply("Pilih salah satu opsi:", { reply_markup: getManageUsersInlineKeyboard() });
+    const text = ctx.message?.text;
+    if (!text) return;
+    
+    switch (text) {
+      case "👥 Manage Users": {
+        const menuMessage = `
+  <b>👥 User Management Tools</b>  
+  •❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+
+  🔨 <b>Ban User</b> - Blokir akses pengguna
+  ✅ <b>Unban User</b> - Pulihkan akses pengguna
+  💳 <b>Add Balance</b> - Tambah saldo manual
+  📉 <b>Reduce Balance</b> - Koreksi saldo
+  🔍 <b>Search User</b> - Temukan pengguna
+  🔑 <b>Add Admin</b> - Berikan hak admin
+  🚫 <b>Remove Admin</b> - Cabut hak admin
+  
+  <u><i>Fitur ini memungkinkan administrator mengelola akun pengguna dengan kontrol penuh. Dilengkapi berbagai opsi untuk memastikan pengelolaan yang efisien dan aman.</i></u>
+  •❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+  Pilih tindakan yang diperlukan:`;
+        
+        await ctx.reply(menuMessage, {
+          parse_mode: "HTML",
+          reply_markup: getManageUsersInlineKeyboard()
+        });
+        break;
+      }
+      case "💰 Transaction Logs":
+        await ctx.reply("🛠 <b>Transaction Logs</b> sedang dalam pengembangan.", {
+          parse_mode: "HTML",
+          reply_markup: getMainMenu(true)
+        });
+        break;
+      case "🔙 Back":
+        ctx.session.activeMenu = "main";
+        await ctx.reply("🔙 Kembali ke menu utama:", {
+          reply_markup: getMainMenu(true)
+        });
+        break;
+      default:
+        await ctx.reply("⚠ Silakan pilih opsi yang valid:", {
+          reply_markup: getManageUsersInlineKeyboard()
+        });
+    }
   }
-}
 
 // Inline keyboard untuk Manage Users
 export function getManageUsersInlineKeyboard() {
   return new InlineKeyboard()
     .text("🔨 Ban User", "BAN_USER")
     .text("✅ Unban User", "UNBAN_USER")
+    .row()
     .text("💳 Add Balance", "ADD_BALANCE")
     .text("➖ Reduce Balance", "REDUCE_BALANCE")
     .row()

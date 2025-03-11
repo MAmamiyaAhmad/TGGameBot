@@ -8,16 +8,17 @@ import { banUser, unbanUser, addBalance, reduceBalance, handleAdminInput, handle
 export function getMainMenu(isAdmin: boolean = false) {
   const keyboard = new Keyboard()
     .text("🏠 Dashboard")
+    .text("❇️ Earn by Task")
     .row()
     .text("🎊 Daily Bonus")
     .text("🎲 Games")
-    .text("👬 Referral")
-    .row()
-    .text("📊 Status")
-    .text("❄️ Extra")
+    .text("ℹ️ About Us")
     .row()
     .text("📞 Support")
-    .text("ℹ️ About Us");
+    .text("👬 Referral")
+    .text("📊 Stats")
+    .row()
+    .text("❄️ Extra Menu");
   if (isAdmin) {
     keyboard.row().text("🛠 Admin Panel");
   }
@@ -86,7 +87,7 @@ export const gamesMenu = new Keyboard()
   .text("🍀 Lucky Number")
   .text("🔴 Color Prediction")
   .row()
-  .text("⚔️ PP Battle")
+  .text("⚔️ PvP Battle")
   .text("🏂 Hi-lo Win")
   .text("🐻 Animal Bet")
   .row()
@@ -94,8 +95,9 @@ export const gamesMenu = new Keyboard()
 
 // ----- EXTRA MENU -----
 export const extraMenu = new Keyboard()
-  .text("📞 Contact Support")
-  .text("💎 Redeem")
+  .text("🆕 Updates")
+  .text("💎 Redeem Code")
+  .text("⚙ Setting")
   .row()
   .text("📝 Give A Review")
   .text("❓ Info & Faqs")
@@ -146,7 +148,7 @@ export async function handleMainMenuSelection(ctx: BotContext) {
       );
       break;
     }
-    case "📊 Status": {
+    case "📊 Stats": {
       const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
       const totalUsers24 = db.prepare("SELECT COUNT(*) as count FROM users WHERE created_at >= datetime('now', '-1 day')").get() as { count: number };
       const userOnline = db.prepare("SELECT COUNT(*) as count FROM users WHERE last_seen >= datetime('now', '-10 minutes')").get() as { count: number };
@@ -155,17 +157,20 @@ export async function handleMainMenuSelection(ctx: BotContext) {
       const onlineDay = Math.floor((today.getTime() - launchDate.getTime()) / (1000 * 3600 * 24)) + 1;
       
       await ctx.reply(
-        `📈 System Status\n\n` +
-        `👥 Total Users: ${totalUsers.count}\n` +
-        `🕒 Total Users (24h): ${totalUsers24.count}\n` +
-        `💻 User Online: ${userOnline.count}\n` +
-        `📆 Online Day: ${onlineDay}\n\n` +
+        `📈 System Status\n` +
+        `•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•\n\n` +
+        `📊 Stats:\n` +
+        `├ 👥 <b>Total Users:</b> ${totalUsers.count}\n` +
+        `├ 🕒 <b>Total Users (24h):</b> ${totalUsers24.count}\n` +
+        `├ 💻 <b>User Online:</b> ${userOnline.count}\n` +
+        `└ 📆 <b>Online Day:</b> ${onlineDay}\n\n` +
+        `•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•\n` +
         `🟢 System Status: Operational`,
-        { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") }
+        { parse_mode: "HTML", reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") }
       );
       break;
     }
-    case "❄️ Extra": {
+    case "❄️ Extra Menu": {
       await ctx.reply("⚙️ Fitur tambahan:", { reply_markup: extraMenu });
       break;
     }

@@ -52,29 +52,38 @@ bot.command("start", async (ctx) => {
   const parts = messageText.split(" ");
   const referrerId = parts.length > 1 ? parts[1] : undefined;
   
-  const existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+  let existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
   if (!existingUser) {
-    // Simpan juga nama depan, nama belakang, dan username (jika ada)
-    db.prepare("INSERT INTO users (id, referred_by, first_name, last_name, username) VALUES (?, ?, ?, ?, ?)")
-      .run(userId, referrerId || null, ctx.from!.first_name, ctx.from!.last_name, ctx.from!.username);
-      
+    // Save additional details (first_name, last_name, username)
+    db.prepare(
+      "INSERT INTO users (id, referred_by, first_name, last_name, username) VALUES (?, ?, ?, ?, ?)"
+    ).run(userId, referrerId || null, ctx.from!.first_name, ctx.from!.last_name, ctx.from!.username);
+    
+    existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
+    
     if (referrerId && referrerId !== userId.toString()) {
       db.prepare("INSERT INTO referrals (referrer_id, referred_id, earned) VALUES (?, ?, ?)")
         .run(referrerId, userId, 500);
       db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?")
         .run(500, referrerId);
       try {
-        await ctx.api.sendMessage(Number(referrerId), `📣 Ada referral baru! User ${userId} telah bergabung melalui referral link Anda. Bonus 500 SundX telah ditambahkan ke saldo Anda.`);
+        await ctx.api.sendMessage(Number(referrerId), `📣 A new referral! User ${userId} has joined using your referral link. Bonus 500 SundX has been added to your balance.`);
       } catch (error) {
-        console.error("Gagal mengirim notifikasi ke upline:", error);
+        console.error("Failed to send referral notification:", error);
       }
-      await ctx.reply("✅ Terima kasih telah menggunakan referral link! Upline Anda telah mendapatkan bonus referral.");
+      await ctx.reply("✅ Thank you for using the referral link! Your upline has received a referral bonus.");
     }
   }
   
-  const isAdmin = ctx.from!.id.toString() === process.env.ADMIN_ID ||
+  // Check admin status from the database
+  const dbUser = db.prepare("SELECT is_admin FROM users WHERE id = ?").get(userId) as { is_admin: number } | undefined;
+  // A user is admin if their 'is_admin' flag is 1 or if they are the predefined admin/super admin
+  const isAdmin = (dbUser && dbUser.is_admin === 1) ||
+                  ctx.from!.id.toString() === process.env.ADMIN_ID ||
                   ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID;
-  ctx.session.role = isAdmin ? (ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID ? "superadmin" : "admin") : "user";
+  ctx.session.role = isAdmin
+    ? (ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID ? "superadmin" : "admin")
+    : "user";
   
   ctx.session.activeMenu = "main";
   await ctx.reply("Welcome to SundaraX Faucet Bot!", { reply_markup: getMainMenu(isAdmin) });
