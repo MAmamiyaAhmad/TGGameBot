@@ -32,6 +32,20 @@ bot.use(session<SessionData, BotContext>({
   initial: (): SessionData => ({ step: undefined, activeMenu: "main", role: "user" })
 }));
 
+// Middleware: Jika user diban, hentikan update dan beri notifikasi.
+bot.use(async (ctx, next) => {
+  if (ctx.from && ctx.from.id) {
+    const user = db
+      .prepare("SELECT is_banned FROM users WHERE id = ?")
+      .get(ctx.from.id) as { is_banned: number } | undefined;
+    if (user && user.is_banned === 1) {
+      await ctx.reply("Anda telah diban dan tidak dapat menggunakan bot.");
+      return;
+    }
+  }
+  await next();
+});
+
 bot.command("start", async (ctx) => {
   const userId = ctx.from!.id;
   const messageText = ctx.message?.text || "";
@@ -40,10 +54,15 @@ bot.command("start", async (ctx) => {
   
   const existingUser = db.prepare("SELECT * FROM users WHERE id = ?").get(userId);
   if (!existingUser) {
-    db.prepare("INSERT INTO users (id, referred_by) VALUES (?, ?)").run(userId, referrerId || null);
+    // Simpan juga nama depan, nama belakang, dan username (jika ada)
+    db.prepare("INSERT INTO users (id, referred_by, first_name, last_name, username) VALUES (?, ?, ?, ?, ?)")
+      .run(userId, referrerId || null, ctx.from!.first_name, ctx.from!.last_name, ctx.from!.username);
+      
     if (referrerId && referrerId !== userId.toString()) {
-      db.prepare("INSERT INTO referrals (referrer_id, referred_id, earned) VALUES (?, ?, ?)").run(referrerId, userId, 500);
-      db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?").run(500, referrerId);
+      db.prepare("INSERT INTO referrals (referrer_id, referred_id, earned) VALUES (?, ?, ?)")
+        .run(referrerId, userId, 500);
+      db.prepare("UPDATE users SET balance = balance + ? WHERE id = ?")
+        .run(500, referrerId);
       try {
         await ctx.api.sendMessage(Number(referrerId), `📣 Ada referral baru! User ${userId} telah bergabung melalui referral link Anda. Bonus 500 SundX telah ditambahkan ke saldo Anda.`);
       } catch (error) {
@@ -53,7 +72,8 @@ bot.command("start", async (ctx) => {
     }
   }
   
-  const isAdmin = ctx.from!.id.toString() === process.env.ADMIN_ID || ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID;
+  const isAdmin = ctx.from!.id.toString() === process.env.ADMIN_ID ||
+                  ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID;
   ctx.session.role = isAdmin ? (ctx.from!.id.toString() === process.env.SUPER_ADMIN_ID ? "superadmin" : "admin") : "user";
   
   ctx.session.activeMenu = "main";
@@ -64,7 +84,8 @@ bot.on("message:text", async (ctx) => {
   db.prepare("UPDATE users SET last_seen = CURRENT_TIMESTAMP WHERE id = ?").run(ctx.from!.id);
   
   // Jika admin sedang memasukkan input untuk admin actions
-  if ((ctx.session.role === "admin" || ctx.session.role === "superadmin") && ctx.session.step && ctx.session.step.startsWith("awaiting_")) {
+  if ((ctx.session.role === "admin" || ctx.session.role === "superadmin") &&
+      ctx.session.step && ctx.session.step.startsWith("awaiting_")) {
     await handleAdminInput(ctx);
     return;
   }

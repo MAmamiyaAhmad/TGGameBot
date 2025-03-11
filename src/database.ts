@@ -9,10 +9,12 @@ CREATE TABLE IF NOT EXISTS users (
     id INTEGER PRIMARY KEY,
     balance REAL NOT NULL DEFAULT 0,
     referred_by INTEGER,
+    first_name TEXT,
+    last_name TEXT,
+    username TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     last_seen DATETIME DEFAULT CURRENT_TIMESTAMP,
-    is_banned INTEGER DEFAULT 0,
-    username TEXT
+    is_banned INTEGER DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS transactions (

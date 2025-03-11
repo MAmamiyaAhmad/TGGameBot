@@ -2,7 +2,7 @@ import { Keyboard, InlineKeyboard } from "grammy";
 import { BotContext } from "./bot";
 import { handleDeposit, handleWithdraw } from "./handlers/transactions";
 import db from "./database";
-import { banUser, unbanUser, addBalance, reduceBalance, handleAdminInput, handleAdminMenuSelection, getManageUsersInlineKeyboard } from "./adminActions";
+import { banUser, unbanUser, addBalance, reduceBalance, handleAdminInput, handleAdminMenuSelection, getManageUsersInlineKeyboard, handleSearchUser } from "./adminActions";
 
 // ----- MAIN MENU -----
 export function getMainMenu(isAdmin: boolean = false) {
@@ -34,22 +34,18 @@ export const dashboardMenu = new Keyboard()
   .text("🔙 Back");
 
 // ----- DEPOSIT INLINE KEYBOARD -----
-// Semua mata uang crypto ditampilkan dalam 3 baris (4 tombol per baris)
 export function getDepositInlineKeyboard() {
   return new InlineKeyboard()
-    // Baris 1
     .text("₿ BTC", "BTC")
     .text("💵 USDT", "USDT")
     .text("💎 TON", "TON")
     .text("⧫ ETH", "ETH")
     .row()
-    // Baris 2
     .text("🔆 LTC", "LTC")
     .text("🐕 DOGE", "DOGE")
     .text("💵 BCH", "BCH")
     .text("⚡ DASH", "DASH")
     .row()
-    // Baris 3
     .text("🔺 TRX", "TRX")
     .text("💧 XRP", "XRP")
     .text("🔷 ADA", "ADA")
@@ -109,29 +105,12 @@ export const extraMenu = new Keyboard()
   .text("🔙 Back");
 
 // ----- ADMIN PANEL MENU -----
-// adminMenu dideklarasikan hanya di sini
+// adminMenu dideklarasikan di sini satu kali
 export const adminMenu = new Keyboard()
   .text("👥 Manage Users")
   .text("💰 Transaction Logs")
   .row()
   .text("🔙 Back");
-
-// ----- INTERFACES -----
-interface UserRow {
-  balance: number;
-}
-interface BonusRow {
-  created_at: string;
-}
-interface ReferralCount {
-  count: number;
-}
-interface TotalUsers {
-  count: number;
-}
-interface TotalTransactions {
-  total: number;
-}
 
 // ----- HANDLER MAIN MENU SELECTION -----
 export async function handleMainMenuSelection(ctx: BotContext) {
@@ -141,7 +120,7 @@ export async function handleMainMenuSelection(ctx: BotContext) {
   switch (text) {
     case "🎊 Daily Bonus": {
       const lastBonus = db.prepare("SELECT created_at FROM transactions WHERE user_id = ? AND type = 'bonus' ORDER BY created_at DESC LIMIT 1")
-        .get(ctx.from!.id) as BonusRow | undefined;
+        .get(ctx.from!.id) as { created_at: string } | undefined;
       if (lastBonus && (Date.now() - new Date(lastBonus.created_at).getTime()) < 86400000) {
         await ctx.reply("⏳ Anda sudah mengambil bonus hari ini, kembali dalam 24 jam!", { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin") });
         return;
@@ -160,7 +139,7 @@ export async function handleMainMenuSelection(ctx: BotContext) {
     case "👬 Referral": {
       const referralCode = `https://t.me/${ctx.me.username}?start=${ctx.from!.id}`;
       const referrals = db.prepare("SELECT COUNT(*) as count FROM referrals WHERE referrer_id = ?")
-        .get(ctx.from!.id) as ReferralCount;
+        .get(ctx.from!.id) as { count: number };
       await ctx.reply(
         `📨 Referral Link:\n<code>${referralCode}</code>\n\n👥 Total Referral: ${referrals.count || 0}\n💰 Bonus per Referral: 500 SundX`,
         { reply_markup: getMainMenu(ctx.session.role === "admin" || ctx.session.role === "superadmin"), parse_mode: "HTML" }
@@ -168,9 +147,9 @@ export async function handleMainMenuSelection(ctx: BotContext) {
       break;
     }
     case "📊 Status": {
-      const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get() as TotalUsers;
-      const totalUsers24 = db.prepare("SELECT COUNT(*) as count FROM users WHERE created_at >= datetime('now', '-1 day')").get() as TotalUsers;
-      const userOnline = db.prepare("SELECT COUNT(*) as count FROM users WHERE last_seen >= datetime('now', '-10 minutes')").get() as TotalUsers;
+      const totalUsers = db.prepare("SELECT COUNT(*) as count FROM users").get() as { count: number };
+      const totalUsers24 = db.prepare("SELECT COUNT(*) as count FROM users WHERE created_at >= datetime('now', '-1 day')").get() as { count: number };
+      const userOnline = db.prepare("SELECT COUNT(*) as count FROM users WHERE last_seen >= datetime('now', '-10 minutes')").get() as { count: number };
       const launchDate = new Date("2023-07-23");
       const today = new Date();
       const onlineDay = Math.floor((today.getTime() - launchDate.getTime()) / (1000 * 3600 * 24)) + 1;
@@ -221,7 +200,7 @@ export async function handleDashboardSelection(ctx: BotContext) {
   switch (text) {
     case "💵 Balance": {
       const user = db.prepare("SELECT balance FROM users WHERE id = ?")
-        .get(ctx.from!.id) as UserRow | undefined;
+        .get(ctx.from!.id) as { balance: number } | undefined;
       await ctx.reply(`💰 Current Balance: ${user?.balance || 0} SundX`, { reply_markup: dashboardMenu });
       break;
     }
@@ -309,6 +288,11 @@ export async function handleInlineCallback(ctx: BotContext) {
     await ctx.reply("Masukkan ID User dan jumlah untuk mengurangi saldo (contoh: 12345 50):");
     return;
   }
+  if (data === "SEARCH_USER") {
+    ctx.session.step = "awaiting_search_user";
+    await ctx.reply("Masukkan username atau user ID untuk mencari:");
+    return;
+  }
   
   if (ctx.session.step === "awaiting_deposit_currency") {
     await handleDeposit(ctx, data);
@@ -325,6 +309,17 @@ export async function handleInlineCallback(ctx: BotContext) {
     ctx.session.step = undefined;
     return;
   }
+  
+  if (ctx.session.step === "awaiting_search_user") {
+    const query = ctx.message!.text;
+    if (!query) {
+      await ctx.reply("Masukkan query yang valid untuk pencarian.");
+      return;
+    }
+    await handleSearchUser(ctx, query);
+    ctx.session.step = undefined;
+    return;
+  }  
 }
 
 // ----- EXPORT ADMIN ACTIONS -----
