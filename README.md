@@ -1,7 +1,3 @@
-Below is an example of a **README.md** file in English with extra emojis to make it visually appealing. This README also reflects the complete project structure including the additional `utils.ts` file.
-
----
-
 # 🚀 SundaraX Games Bot
 
 Welcome to the **SundaraX Games Bot** – an innovative Telegram bot built with TypeScript and [grammy](https://grammy.dev/). This bot offers a wide range of features including crypto faucet functionality, deposit (top-up) and withdrawal services, daily bonuses, fun games, referral rewards, support ticket management, and a powerful admin panel for user management.
