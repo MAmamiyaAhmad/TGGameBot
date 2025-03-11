@@ -38,18 +38,23 @@ export async function handleSearchUser(ctx: BotContext, query: string) {
   
   const status = user.is_banned === 1 ? "🔴 Banned" : "🟢 Active";
   const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim() || "Tidak tersedia";
-  const username = user.username ? `@${user.username}` : "Tidak tersedia";
+  const username = user.username ? `${user.username}` : "Tidak tersedia";
   
   const message = `
-👤 <b>User Information</b>
-<b>Nama:</b> ${fullName}
-<b>Username:</b> ${username}
-<b>User ID:</b> <code>${user.id}</code>
-<b>Balance:</b> ${user.balance} SundX
-<b>Status:</b> ${status}
-<b>Registered:</b> ${user.created_at}
-<b>Downline:</b> ${downline.count}
-  `;
+<b>User Information</b>
+•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+
+🆔 <b>Name:</b> ${fullName}
+ ├ <b>🧑‍💻 Username:</b> @${username}
+ ├ <b>🆔 User ID:</b> <code>${user.id}</code>
+ ├ <b>💰 Balance:</b> ${user.balance} SundX
+ ├ <b>🔑 Status:</b> ${status}
+ ├ <b>🗓 Registered:</b> ${user.created_at}
+ └ <b>👥 Downline:</b> ${downline.count}
+
+•❂•─•─•❂•─•❂••❂•─•❂•─•─•❂•
+`;
+
   
   await ctx.reply(message, { parse_mode: "HTML" });
 }
@@ -170,12 +175,13 @@ export async function handleAdminMenuSelection(ctx: BotContext) {
 // Inline keyboard untuk Manage Users
 export function getManageUsersInlineKeyboard() {
   return new InlineKeyboard()
+    .text("🔍 Search User", "SEARCH_USER")
+    .row()
     .text("🔨 Ban User", "BAN_USER")
     .text("✅ Unban User", "UNBAN_USER")
+    .row()
     .text("💳 Add Balance", "ADD_BALANCE")
     .text("➖ Reduce Balance", "REDUCE_BALANCE")
-    .row()
-    .text("🔍 Search User", "SEARCH_USER")
     .row()
     .text("🔙 Back", "ADMIN_BACK");
 }
